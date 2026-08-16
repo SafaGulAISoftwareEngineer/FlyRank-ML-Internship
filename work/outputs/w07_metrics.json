@@ -1,0 +1,15 @@
+{
+  "baseline_precision_at_50": 0.86,
+  "baseline_precision_at_50_grouped_test": 0.64,
+  "model_precision_at_50_grouped": 0.74,
+  "model_precision_at_50_random_split": 1.0,
+  "test_base_rate": 0.6518046709129511,
+  "eligible_n": 6920,
+  "feature_importances": {
+    "avg_daily_clicks_prior": 0.26950489685447304,
+    "avg_position_prior": 0.33228494100012207,
+    "click_consistency_prior": 0.30762134517488604,
+    "ai_share_prior": 0.0905888169705188,
+    "no_ranking_data_prior": 0.0
+  }
+}
