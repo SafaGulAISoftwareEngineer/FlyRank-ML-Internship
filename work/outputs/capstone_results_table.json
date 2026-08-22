@@ -1,0 +1,12 @@
+[
+  {
+    "method":"Baseline (position rule)",
+    "Precision@50":0.64,
+    "lift over base rate":0.9818892508
+  },
+  {
+    "method":"Random Forest",
+    "Precision@50":0.76,
+    "lift over base rate":1.1659934853
+  }
+]
