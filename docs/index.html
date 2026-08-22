@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Which pages decline first? A prior-window early-warning model</title>
+<style>
+  body { font-family: -apple-system, Georgia, serif; max-width: 760px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #222; }
+  h1 { font-size: 1.8em; } h2 { margin-top: 2.2em; border-bottom: 2px solid #eee; padding-bottom: 6px; }
+  img { max-width: 100%; border: 1px solid #ddd; border-radius: 6px; }
+  .caption { font-size: 0.9em; color: #666; margin-top: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  th { background: #f7f7f7; }
+  .limits { background: #fff8e6; border-left: 4px solid #e0a800; padding: 12px 16px; }
+  .headline { font-size: 1.15em; padding: 10px 16px; background: #f0f7ff; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<h1>Which pages decline first? A prior-window early-warning model</h1>
+<p><em>Safa Gul — FlyRank ML Internship Capstone, 2026</em></p>
+
+<p class="headline"><strong>Headline result:</strong> On an honest, client-held-out test, the
+model ranks priority review pages with 1.14× the precision of random selection — modest but
+real, and measured the hard way after two easier-looking numbers (0.86 and 1.00) turned out to
+be evaluation artifacts.</p>
+
+<h2>Abstract</h2>
+<p>Which content is worth reviewing first, before it declines? Using 90 days of prior search
+performance for ~7,000 content items that already clear a minimal traffic floor, I built a
+Random Forest classifier and compared it against a transparent single-signal baseline (weak
+search position). On a client-held-out test split — the only honest way to measure this — the
+model reached Precision@50 of 0.74 against a 0.65 base rate, versus 0.64 for the baseline. The
+larger finding was methodological: the same baseline scored 0.86 when measured on familiar
+clients, and the same model scored a perfect 1.00 on a naive random split — both artifacts of
+evaluating on data the method had already seen. This is decision-support evidence for a content
+team's weekly review queue, not a causal or automated claim.</p>
+
+<h2>Introduction</h2>
+<p>Content that ranks well in search quietly decays over time — rankings slip, clicks drop, and
+most teams notice too late. Out of thousands of pages, the valuable decision is which one to
+review first. This work builds a ranked, explainable early-warning signal for that decision,
+using only information available before the fact — never information from the outcome window
+itself.</p>
+
+<h2>Data</h2>
+<p>Source: the FlyRank internship warehouse (Hugging Face, pseudonymized),
+<code>fact_content_daily_performance</code> — daily GSC/GA4 search performance across 104
+clients over ~17 months. Each content item's "prior" window is the 90 days before a decision
+date; its "future" outcome is the following 30 days.</p>
+<p>Of 363,626 content items, only 6,920 (1.9%) average at least 1 click/day over the prior
+window — the population this model addresses. Below that floor, decline isn't a well-defined
+question. <code>ga4_coverage_prior</code> was tested and excluded after being shown to reflect
+which client set up tracking, not page-level behavior. No client names, domains, URLs, or raw
+queries appear anywhere in this work.</p>
+
+<h2>Methodology</h2>
+<p><strong>Label:</strong> average daily clicks in the future window dropping below 75% of the
+prior window's average, built strictly from the future window relative to the prior — verified
+leak-free by training once with a deliberately smuggled future-window feature (AUC jumped from
+0.63 to 0.997, confirming the test itself was sound) and once without.</p>
+<p><strong>Features</strong> (5, all prior-window only): average daily clicks, average search
+position, click consistency (share of days with any clicks), AI-referral session share, and a
+flag for pages with no ranking data at all.</p>
+<p><strong>Baseline:</strong> a single-signal rule — flag pages with search position worse than
+the eligible population's median — chosen because it was the only one of three candidate signals
+(position, click consistency, GA4 coverage) to survive a formal signal audit.</p>
+<p><strong>Model:</strong> Random Forest, to combine multiple prior-window signals without
+hand-specifying their interaction.</p>
+<p><strong>Validation:</strong> split by client, not by row — an entire client's pages land on
+only one side of the split, so test performance measures generalization to new clients rather
+than memorization of familiar ones.</p>
+
+<h2>Results</h2>
+<img src="img/results_comparison.png" alt="Baseline vs Random Forest Precision@50, client-grouped holdout, both compared against the test-set base rate">
+<p class="caption">Precision@50 on a client-grouped holdout split. Base rate: 0.65.</p>
+<table>
+<tr><th>Method</th><th>Precision@50</th><th>Lift over base rate</th></tr>
+<tr><td>Baseline (position rule)</td><td>0.64</td><td>0.98×</td></tr>
+<tr><td>Random Forest</td><td>0.76</td><td>1.17×</td></tr>
+</table>
+<img src="img/feature_importance.png" alt="Random Forest feature importance for decline prediction">
+<p class="caption">Search position and click consistency drive most of the model's decisions.</p>
+
+<h2>Limitations & honest framing</h2>
+<div class="limits">
+<ul>
+<li>Only 1.9% of content clears the traffic floor this model addresses.</li>
+<li>The test population covers roughly 9 clients — generalization beyond this sample is untested.</li>
+<li>Built from a single decision-date snapshot, not repeated across seasons.</li>
+<li>Two easily-mistaken numbers do <strong>not</strong> belong in this result: the baseline's 0.86
+in-sample score and the model's 1.00 random-split score — both shown to be artifacts of testing
+on already-seen clients, not genuine performance.</li>
+<li>Roughly 10-20% of top-priority flags are false alarms in manual review; this is
+decision-support for human review, not an automated or causal claim.</li>
+</ul>
+</div>
+
+<h2>Ranked recommendations</h2>
+<p>The model produces a priority queue, not an automated action. Every flag requires human
+review before any change is made — no page should be unpublished, redirected, or otherwise
+modified from this score alone.</p>
+
+<h2>Reproducibility</h2>
+<p>Model: RandomForestClassifier(n_estimators=200, random_state=42, class_weight='balanced').
+Split: GroupShuffleSplit, 70/30 by client_hash_id, single split (n_splits=1), same seed.
+Dependencies: duckdb, huggingface_hub, scikit-learn, pandas — see requirements.txt.
+Full notebooks, in build order, with all code and markdown reasoning: <a href="https://github.com/SafaGulAISoftwareEngineer/FlyRank-ML-Internship/tree/main/work/notebooks">work/notebooks/</a>
+in the <a href="https://github.com/SafaGulAISoftwareEngineer/FlyRank-ML-Internship">project repository</a>.
+Note: features are queried live from the warehouse each run, so results vary slightly run to
+run (observed range: 0.74–0.80 Precision@50) even with a fixed seed — the model is
+deterministic, its input snapshot isn't.</p>
+
+<h2>Acknowledgments &amp; data credit</h2>
+<p>Built on the FlyRank ML Internship dataset — <a href="https://flyrank.ai">flyrank.ai</a>.</p>
+
+</body>
+</html>
